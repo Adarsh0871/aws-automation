@@ -1,6 +1,6 @@
 ---
 - name: Install Apache
-  hosts: 98.80.201.116
+  hosts: 172.31.2.69
   become: true
   tasks:
     - name: Install Apache
