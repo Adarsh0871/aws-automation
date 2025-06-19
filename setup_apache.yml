@@ -1,6 +1,6 @@
 ---
 - name: Install Apache
-  hosts: tag_Name_AWXAppVM
+  hosts: tag_Name_AWXApp
   become: true
   tasks:
     - name: Install Apache
