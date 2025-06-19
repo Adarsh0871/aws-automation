@@ -6,7 +6,7 @@
     - name: Launch EC2
       amazon.aws.ec2_instance:
         name: AWXApp
-        key_name: awx-key
+        key_name: ansiblekey
         instance_type: t2.micro
         image_id: ami-020cba7c55df1f615
         region: us-east-1

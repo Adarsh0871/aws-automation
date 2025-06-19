@@ -1,15 +1,15 @@
----
-- name: Install Apache
-  hosts: ip-172-31-2-69.ec2.internal
-  become: true
-  tasks:
-    - name: Install Apache
-      yum:
-        name: httpd
-        state: present
+# ---
+# - name: Install Apache
+#   hosts: tag_Name_AWXApp
+#   become: true
+#   tasks:
+#     - name: Install Apache
+#       yum:
+#         name: httpd
+#         state: present
 
-    - name: Start Apache
-      service:
-        name: httpd
-        state: started
-        enabled: yes
+#     - name: Start Apache
+#       service:
+#         name: httpd
+#         state: started
+#         enabled: yes
