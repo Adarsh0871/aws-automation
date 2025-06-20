@@ -1,0 +1,87 @@
+---
+- name: Deploy Python Application from GitHub to EC2 via Apache
+  hosts: webservers
+  become: yes
+
+  vars:
+    app_repo: "https://github.com/chsagar001/AnsibleDeployment.git"
+    app_dest: "/var/www/html/myapp"
+    apache_site_conf: "/etc/apache2/sites-available/myapp.conf"
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - apache2
+          - git
+          - python3
+          - python3-pip
+          - libapache2-mod-wsgi-py3
+        state: present
+        update_cache: yes
+
+    - name: Clone the GitHub repository
+      git:
+        repo: "{{ app_repo }}"
+        dest: "{{ app_dest }}"
+        version: HEAD
+        force: yes
+
+    - name: Set proper permissions for app folder
+      file:
+        path: "{{ app_dest }}"
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ app_dest }}/requirements.txt"
+
+    - name: Create WSGI file
+      copy:
+        dest: "{{ app_dest }}/app.wsgi"
+        content: |
+          import sys
+          import os
+          sys.path.insert(0, '{{ app_dest }}/Backend')
+          from backend import app as application
+
+    - name: Create Apache site config
+      copy:
+        dest: "{{ apache_site_conf }}"
+        content: |
+          <VirtualHost *:80>
+              ServerAdmin webmaster@localhost
+              DocumentRoot {{ app_dest }}
+
+              WSGIScriptAlias / {{ app_dest }}/app.wsgi
+
+              <Directory {{ app_dest }}>
+                  Require all granted
+              </Directory>
+
+              ErrorLog ${APACHE_LOG_DIR}/error.log
+              CustomLog ${APACHE_LOG_DIR}/access.log combined
+          </VirtualHost>
+
+    - name: Enable custom site
+      command: "a2ensite myapp.conf"
+      notify: Restart Apache
+
+    - name: Enable WSGI module
+      apache2_module:
+        name: wsgi
+        state: present
+      notify: Restart Apache
+
+    - name: Disable default site
+      command: "a2dissite 000-default.conf"
+      notify: Restart Apache
+      ignore_errors: yes
+
+  handlers:
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
