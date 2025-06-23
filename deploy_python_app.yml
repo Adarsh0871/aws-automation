@@ -1,87 +1,102 @@
-# - name: Deploy Python Application from GitHub to EC2 via Apache (ProxyPass to FastAPI)
-#   hosts: webservers
-#   become: yes
+---
+- name: Deploy FastAPI App Behind Apache
+  hosts: webservers
+  become: yes
 
-#   vars:
-#     app_repo: "https://github.com/chsagar001/AWSAutomation.git"
-#     app_dest: "/var/www/html/myapp"
-#     apache_site_conf: "/etc/apache2/sites-available/myapp.conf"
+  vars:
+    app_dir: /var/www/html/fastapiapp
+    repo_url: https://github.com/chsagar001/AWSAutomation.git
 
-#   tasks:
-#     - name: Install required system packages
-#       apt:
-#         name:
-#           - apache2
-#           - git
-#           - python3
-#           - python3-pip
-#           - python3-venv
-#         state: present
-#         update_cache: yes
+  tasks:
 
-#     - name: Ensure app directory exists
-#       file:
-#         path: "{{ app_dest }}"
-#         state: directory
-#         owner: www-data
-#         group: www-data
-#         mode: '0755'
+    - name: Ensure required packages are installed
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - git
+        state: present
+        update_cache: yes
 
-#     - name: Mark the app directory as safe for git
-#       command: git config --global --add safe.directory {{ app_dest }}
+    - name: Clone FastAPI app repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_dir }}"
+        version: HEAD
 
-#     - name: Clone the GitHub repository
-#       git:
-#         repo: "{{ app_repo }}"
-#         dest: "{{ app_dest }}"
-#         version: HEAD
-#         force: yes
+    - name: Create Python virtual environment
+      command: python3 -m venv venv
+      args:
+        chdir: "{{ app_dir }}"
+      creates: "{{ app_dir }}/venv"
 
-#     - name: Set correct permissions for app folder
-#       file:
-#         path: "{{ app_dest }}"
-#         owner: www-data
-#         group: www-data
-#         recurse: yes
+    - name: Install Python dependencies (FastAPI, Uvicorn, Gunicorn)
+      pip:
+        virtualenv: "{{ app_dir }}/venv"
+        name:
+          - fastapi
+          - uvicorn[standard]
+          - gunicorn
 
-#     - name: Create a Python virtual environment
-#       command: python3 -m venv {{ app_dest }}/venv
-#       args:
-#         creates: "{{ app_dest }}/venv"
+    - name: Create systemd service for FastAPI
+      copy:
+        dest: /etc/systemd/system/fastapi.service
+        content: |
+          [Unit]
+          Description=Gunicorn instance to serve FastAPI app
+          After=network.target
 
-#     - name: Install Python dependencies inside virtualenv
-#       command: "{{ app_dest }}/venv/bin/pip install -r {{ app_dest }}/requirements.txt"
+          [Service]
+          User=www-data
+          Group=www-data
+          WorkingDirectory={{ app_dir }}
+          Environment="PATH={{ app_dir }}/venv/bin"
+          ExecStart={{ app_dir }}/venv/bin/gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000
 
-#     - name: Create Apache site config with ProxyPass to FastAPI on port 8000
-#       copy:
-#         dest: "{{ apache_site_conf }}"
-#         content: |
-#           <VirtualHost *:80>
-#               ServerName 3.235.14.147
+          [Install]
+          WantedBy=multi-user.target
 
-#               ProxyPreserveHost On
-#               ProxyPass / http://127.0.0.1:8000/
-#               ProxyPassReverse / http://127.0.0.1:8000/
+    - name: Reload systemd and start FastAPI service
+      systemd:
+        daemon_reload: yes
+        name: fastapi
+        state: started
+        enabled: yes
 
-#               ErrorLog ${APACHE_LOG_DIR}/myapp_error.log
-#               CustomLog ${APACHE_LOG_DIR}/myapp_access.log combined
-#           </VirtualHost>
+    - name: Enable Apache proxy modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - proxy
+        - proxy_http
 
-#     - name: Enable required Apache proxy modules
-#       command: "a2enmod proxy proxy_http"
-#       notify: Restart Apache
+    - name: Configure Apache to reverse proxy FastAPI
+      copy:
+        dest: /etc/apache2/sites-available/fastapi.conf
+        content: |
+          <VirtualHost *:80>
+              ServerName 3.227.19.34
 
-#     - name: Enable custom Apache site
-#       command: "a2ensite myapp.conf"
-#       notify: Restart Apache
+              ProxyPreserveHost On
+              ProxyPass / http://127.0.0.1:8000/
+              ProxyPassReverse / http://127.0.0.1:8000/
 
-#     - name: Disable default Apache site
-#       command: "a2dissite 000-default.conf"
-#       ignore_errors: yes
-#       notify: Restart Apache
+              ErrorLog ${APACHE_LOG_DIR}/fastapi_error.log
+              CustomLog ${APACHE_LOG_DIR}/fastapi_access.log combined
+          </VirtualHost>
 
-#   handlers:
-#     - name: Restart Apache
-#       service:
-#         name: apache2
-#         state: restarted
+    - name: Enable fastapi site
+      command: a2ensite fastapi.conf
+      args:
+        creates: /etc/apache2/sites-enabled/fastapi.conf
+
+    - name: Disable default Apache site
+      command: a2dissite 000-default.conf
+      ignore_errors: yes
+
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
