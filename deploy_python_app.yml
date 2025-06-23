@@ -65,13 +65,13 @@
         state: started
         enabled: yes
 
-    - name: Enable Apache proxy modules
-      apache2_module:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - proxy
-        - proxy_http
+    - name: Enable Apache proxy module: proxy
+      command: a2enmod proxy
+      notify: Restart Apache
+
+    - name: Enable Apache proxy module: proxy_http
+      command: a2enmod proxy_http
+      notify: Restart Apache
 
     - name: Configure Apache to reverse proxy FastAPI
       copy:
@@ -92,11 +92,14 @@
       command: a2ensite fastapi.conf
       args:
         creates: /etc/apache2/sites-enabled/fastapi.conf
+      notify: Restart Apache
 
     - name: Disable default Apache site
       command: a2dissite 000-default.conf
       ignore_errors: yes
+      notify: Restart Apache
 
+  handlers:
     - name: Restart Apache
       service:
         name: apache2
