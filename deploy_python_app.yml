@@ -1,15 +1,14 @@
-- name: Deploy FastAPI App Behind Apache
+- name: Deploy Static Sagar App Page with Apache
   hosts: webservers
   become: yes
 
   vars:
-    app_dir: /var/www/html/fastapiapp
+    app_dir: /var/www/html/sagarapp
     repo_url: https://github.com/chsagar001/AWSAutomation.git
-    apache_site_conf_path: /etc/apache2/sites-available/fastapiapp.conf
-    apache_index_path: /var/www/html/index.html
+    apache_site_conf_path: /etc/apache2/sites-available/sagarapp.conf
 
   tasks:
-    - name: Install Apache2 and git
+    - name: Install required packages
       apt:
         name:
           - apache2
@@ -17,20 +16,13 @@
         state: present
         update_cache: yes
 
-    - name: Enable Apache proxy modules
-      apache2_module:
-        name: "{{ item }}"
-        state: present
-      loop:
-        - proxy
-        - proxy_http
-
-    - name: Clone FastAPI app repo
+    - name: Clone Sagar app repo
       git:
         repo: "{{ repo_url }}"
         dest: "{{ app_dir }}"
         version: HEAD
         force: yes
+
     - name: Deploy Apache site configuration
       copy:
         dest: "{{ apache_site_conf_path }}"
@@ -38,24 +30,25 @@
           <VirtualHost *:80>
               ServerName 3.227.19.34
 
-              DocumentRoot /var/www/html
+              DocumentRoot {{ app_dir }}
 
-              <Directory /var/www/html>
+              <Directory {{ app_dir }}>
                   Options Indexes FollowSymLinks
                   AllowOverride None
                   Require all granted
               </Directory>
-              ErrorLog ${APACHE_LOG_DIR}/fastapi_error.log
-              CustomLog ${APACHE_LOG_DIR}/fastapi_access.log combined
+
+              ErrorLog ${APACHE_LOG_DIR}/sagar_error.log
+              CustomLog ${APACHE_LOG_DIR}/sagar_access.log combined
           </VirtualHost>
         owner: root
         group: root
         mode: '0644'
 
-    - name: Enable fastapiapp Apache site
-      command: a2ensite fastapiapp.conf
+    - name: Enable sagarapp Apache site
+      command: a2ensite sagarapp.conf
       args:
-        creates: /etc/apache2/sites-enabled/fastapiapp.conf
+        creates: /etc/apache2/sites-enabled/sagarapp.conf
 
     - name: Disable default Apache site
       command: a2dissite 000-default.conf
