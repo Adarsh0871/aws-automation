@@ -65,11 +65,11 @@
         state: started
         enabled: yes
 
-    - name: Enable Apache proxy module: proxy
+    - name: "Enable Apache proxy module: proxy"
       command: a2enmod proxy
       notify: Restart Apache
 
-    - name: Enable Apache proxy module: proxy_http
+    - name: "Enable Apache proxy module: proxy_http"
       command: a2enmod proxy_http
       notify: Restart Apache
 
