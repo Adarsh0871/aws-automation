@@ -1,4 +1,3 @@
----
 - name: Deploy FastAPI App Behind Apache
   hosts: webservers
   become: yes
@@ -6,19 +5,25 @@
   vars:
     app_dir: /var/www/html/fastapiapp
     repo_url: https://github.com/chsagar001/AWSAutomation.git
+    apache_site_conf_path: /etc/apache2/sites-available/fastapiapp.conf
+    apache_index_path: /var/www/html/index.html
 
   tasks:
-
-    - name: Ensure required packages are installed
+    - name: Install Apache2 and git
       apt:
         name:
-          - python3
-          - python3-pip
-          - python3-venv
-          - git
           - apache2
+          - git
         state: present
         update_cache: yes
+
+    - name: Enable Apache proxy modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - proxy
+        - proxy_http
 
     - name: Clone FastAPI app repo
       git:
@@ -26,87 +31,37 @@
         dest: "{{ app_dir }}"
         version: HEAD
         force: yes
-
-    - name: Create Python virtual environment
-      command: python3 -m venv {{ app_dir }}/venv
-      args:
-        creates: "{{ app_dir }}/venv/bin/activate"
-
-    - name: Check if virtual environment directory exists
-      stat:
-        path: "{{ app_dir }}/venv/bin/activate"
-      register: venv_stat
-
-    - name: Fail if virtual environment does not exist
-      fail:
-        msg: "Virtual environment was not created properly."
-      when: not venv_stat.stat.exists
-
-    - name: Install Python dependencies using venv pip
-      pip:
-        name:
-          - fastapi
-          - "uvicorn[standard]"
-          - gunicorn
-        executable: "{{ app_dir }}/venv/bin/pip"
-
-    - name: Create systemd service for FastAPI
+    - name: Deploy Apache site configuration
       copy:
-        dest: /etc/systemd/system/fastapi.service
-        content: |
-          [Unit]
-          Description=Gunicorn instance to serve FastAPI app
-          After=network.target
-
-          [Service]
-          User=www-data
-          Group=www-data
-          WorkingDirectory={{ app_dir }}
-          Environment="PATH={{ app_dir }}/venv/bin"
-          ExecStart={{ app_dir }}/venv/bin/gunicorn main:app -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000
-
-          [Install]
-          WantedBy=multi-user.target
-
-    - name: Reload systemd and start FastAPI service
-      systemd:
-        daemon_reload: yes
-        name: fastapi
-        state: started
-        enabled: yes
-
-    - name: Enable Apache proxy modules
-      shell: |
-        a2enmod proxy
-        a2enmod proxy_http
-      args:
-        warn: false
-
-    - name: Configure Apache to reverse proxy FastAPI
-      copy:
-        dest: /etc/apache2/sites-available/fastapi.conf
+        dest: "{{ apache_site_conf_path }}"
         content: |
           <VirtualHost *:80>
               ServerName 3.227.19.34
 
-              ProxyPreserveHost On
-              ProxyPass / http://127.0.0.1:8000/
-              ProxyPassReverse / http://127.0.0.1:8000/
+              DocumentRoot /var/www/html
 
+              <Directory /var/www/html>
+                  Options Indexes FollowSymLinks
+                  AllowOverride None
+                  Require all granted
+              </Directory>
               ErrorLog ${APACHE_LOG_DIR}/fastapi_error.log
               CustomLog ${APACHE_LOG_DIR}/fastapi_access.log combined
           </VirtualHost>
+        owner: root
+        group: root
+        mode: '0644'
 
-    - name: Enable fastapi site
-      command: a2ensite fastapi.conf
+    - name: Enable fastapiapp Apache site
+      command: a2ensite fastapiapp.conf
       args:
-        creates: /etc/apache2/sites-enabled/fastapi.conf
+        creates: /etc/apache2/sites-enabled/fastapiapp.conf
 
     - name: Disable default Apache site
       command: a2dissite 000-default.conf
       ignore_errors: yes
 
-    - name: Restart Apache
+    - name: Reload Apache to apply changes
       service:
         name: apache2
-        state: restarted
+        state: reloaded
