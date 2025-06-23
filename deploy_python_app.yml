@@ -32,13 +32,13 @@
         chdir: "{{ app_dir }}"
         creates: "{{ app_dir }}/venv"
 
-    - name: Install Python dependencies (FastAPI, Uvicorn, Gunicorn)
+    - name: Install Python dependencies using venv pip
       pip:
-        virtualenv: "{{ app_dir }}/venv"
         name:
           - fastapi
           - "uvicorn[standard]"
           - gunicorn
+        executable: "{{ app_dir }}/venv/bin/pip"
 
     - name: Create systemd service for FastAPI
       copy:
@@ -65,13 +65,12 @@
         state: started
         enabled: yes
 
-    - name: "Enable Apache proxy module: proxy"
-      command: a2enmod proxy
-      notify: Restart Apache
-
-    - name: "Enable Apache proxy module: proxy_http"
-      command: a2enmod proxy_http
-      notify: Restart Apache
+    - name: Enable Apache proxy modules
+      shell: |
+        a2enmod proxy
+        a2enmod proxy_http
+      args:
+        warn: false
 
     - name: Configure Apache to reverse proxy FastAPI
       copy:
@@ -92,14 +91,11 @@
       command: a2ensite fastapi.conf
       args:
         creates: /etc/apache2/sites-enabled/fastapi.conf
-      notify: Restart Apache
 
     - name: Disable default Apache site
       command: a2dissite 000-default.conf
       ignore_errors: yes
-      notify: Restart Apache
 
-  handlers:
     - name: Restart Apache
       service:
         name: apache2
