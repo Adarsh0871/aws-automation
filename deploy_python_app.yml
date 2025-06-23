@@ -25,12 +25,22 @@
         repo: "{{ repo_url }}"
         dest: "{{ app_dir }}"
         version: HEAD
+        force: yes
 
     - name: Create Python virtual environment
-      command: python3 -m venv venv
+      command: python3 -m venv {{ app_dir }}/venv
       args:
-        chdir: "{{ app_dir }}"
-        creates: "{{ app_dir }}/venv"
+        creates: "{{ app_dir }}/venv/bin/activate"
+
+    - name: Check if virtual environment directory exists
+      stat:
+        path: "{{ app_dir }}/venv/bin/activate"
+      register: venv_stat
+
+    - name: Fail if virtual environment does not exist
+      fail:
+        msg: "Virtual environment was not created properly."
+      when: not venv_stat.stat.exists
 
     - name: Install Python dependencies using venv pip
       pip:
