@@ -16,6 +16,7 @@
           - python3-pip
           - python3-venv
           - git
+          - apache2
         state: present
         update_cache: yes
 
@@ -29,14 +30,14 @@
       command: python3 -m venv venv
       args:
         chdir: "{{ app_dir }}"
-      creates: "{{ app_dir }}/venv"
+        creates: "{{ app_dir }}/venv"
 
     - name: Install Python dependencies (FastAPI, Uvicorn, Gunicorn)
       pip:
         virtualenv: "{{ app_dir }}/venv"
         name:
           - fastapi
-          - uvicorn[standard]
+          - "uvicorn[standard]"
           - gunicorn
 
     - name: Create systemd service for FastAPI
