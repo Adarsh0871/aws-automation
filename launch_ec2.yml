@@ -41,30 +41,19 @@
         state: present
       register: igw
 
-    - name: Create a route table
+    - name: Create route table and associate subnet
       amazon.aws.ec2_vpc_route_table:
         vpc_id: "{{ vpc.vpc.id }}"
         region: "{{ region }}"
         tags:
           Name: MyRouteTable
-        state: present
-      register: route_table
-
-    - name: Add route to internet gateway in route table
-      amazon.aws.ec2_vpc_route_table:
-        route_table_id: "{{ route_table.route_table.id }}"
-        region: "{{ region }}"
         routes:
           - dest: 0.0.0.0/0
             gateway_id: "{{ igw.gateway_id }}"
+        associations:
+          - subnet_id: "{{ subnet.subnet.id }}"
         state: present
-
-    - name: Associate subnet with route table
-      amazon.aws.ec2_vpc_route_table_association:
-        subnet_id: "{{ subnet.subnet.id }}"
-        route_table_id: "{{ route_table.route_table.id }}"
-        region: "{{ region }}"
-        state: present
+      register: route_table
 
     - name: Create security group allowing SSH and HTTP
       amazon.aws.ec2_group:
