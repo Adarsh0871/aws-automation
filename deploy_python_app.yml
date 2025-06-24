@@ -28,7 +28,7 @@
         dest: "{{ apache_site_conf_path }}"
         content: |
           <VirtualHost *:80>
-              ServerName 13.218.181.26
+              ServerName 44.222.222.171
 
               DocumentRoot {{ app_dir }}
 
