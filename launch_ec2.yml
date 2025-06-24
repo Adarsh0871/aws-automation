@@ -45,15 +45,18 @@
       amazon.aws.ec2_vpc_route_table:
         vpc_id: "{{ vpc.vpc.id }}"
         region: "{{ region }}"
+        tags:
+          Name: MyRouteTable
         state: present
       register: route_table
 
-    - name: Create route to internet gateway
-      amazon.aws.ec2_vpc_route:
+    - name: Add route to internet gateway in route table
+      amazon.aws.ec2_vpc_route_table:
         route_table_id: "{{ route_table.route_table.id }}"
-        destination_cidr_block: 0.0.0.0/0
-        gateway_id: "{{ igw.gateway_id }}"
         region: "{{ region }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw.gateway_id }}"
         state: present
 
     - name: Associate subnet with route table
