@@ -86,7 +86,7 @@
           - device_index: 0
             subnet_id: "{{ subnet.subnet.id }}"
             assign_public_ip: yes
-            security_groups:
+            groups:
               - "{{ sg.group_id }}"
         volumes:
           - device_name: /dev/xvda
