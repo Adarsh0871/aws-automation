@@ -49,7 +49,7 @@
       register: route_table
 
     - name: Create route to internet gateway
-      amazon.aws.ec2_vpc_route:
+      amazon.aws.ec2_route:
         route_table_id: "{{ route_table.route_table.id }}"
         destination_cidr_block: 0.0.0.0/0
         gateway_id: "{{ igw.gateway_id }}"
