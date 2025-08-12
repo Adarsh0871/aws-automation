@@ -5,6 +5,7 @@
   gather_facts: no
 
   vars:
+    ansible_python_interpreter: /usr/bin/python3
     region: us-east-1
     key_name: ansiblekey
     vpc_cidr: "10.0.0.0/16"
@@ -104,4 +105,5 @@
     - name: Output EC2 public IP
       debug:
         msg: "EC2 instance public IP: {{ ec2.instances[0].public_ip_address }}"
+
 
