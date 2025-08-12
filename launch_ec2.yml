@@ -1,6 +1,7 @@
 ---
 - name: Launch EC2 Instance
   hosts: localhost
+  connection: local
   gather_facts: no
 
   vars:
@@ -103,3 +104,4 @@
     - name: Output EC2 public IP
       debug:
         msg: "EC2 instance public IP: {{ ec2.instances[0].public_ip_address }}"
+
