@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'requestId',   defaultValue: 'REQ0012345',   description: 'Unique Request ID')
-        string(name: 'env',         defaultValue: 'prod',       description: 'Target Environment')
-        string(name: 'templateName',defaultValue: 'launch_ec2',description: 'Ansible Template Name')
+        string(name: 'requestId',   defaultValue: 'REQ0001',   description: 'Unique Request ID')
+        string(name: 'env',         defaultValue: 'dev',       description: 'Target Environment')
+        string(name: 'templateName',defaultValue: 'deploy-ec2',description: 'Ansible Template Name')
         string(name: 'callbackUrl', defaultValue: '',          description: 'Callback URL (required)')
     }
 
@@ -17,7 +17,7 @@ pipeline {
         stage('Pre-check Callback URL') {
             steps {
                 script {
-                    if (!params.callbackUrl?.trim()) {
+                    if (!callbackUrl?.trim()) {
                         error "❌ callbackUrl is missing. Stopping pipeline."
                     }
                 }
@@ -47,10 +47,10 @@ pipeline {
                     "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
                 ]) {
                     sh """
-                    ansible-playbook -i localhost, ${params.templateName}.yml \
-                        -e env=${params.env} \
-                        -e request_id=${params.requestId} \
-                        -e callback_url=${params.callbackUrl}
+                    ansible-playbook -i localhost, ${templateName}.yml \
+                        -e env=${env} \
+                        -e request_id=${requestId} \
+                        -e callback_url=${callbackUrl}
                     """
                 }
             }
@@ -59,38 +59,38 @@ pipeline {
 
     post {
         success {
-            echo "✅ AWS provisioning successful for requestId: ${params.requestId}"
+            echo "✅ AWS provisioning successful for requestId: ${requestId}"
 
             withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
-                sh """
+                sh '''
                 curl -s -u "$SN_USER:$SN_PASS" -X POST \
                   -H "Content-Type: application/json" \
-                  -d '{
-                        "requestId": "${params.requestId}",
-                        "templateName": "${params.templateName}",
-                        "env": "${params.env}",
-                        "status": "SUCCESS"
-                      }' \
-                  "${params.callbackUrl}"
-                """
+                  -d "{
+                        \\"requestId\\": \\"'$requestId'\\",
+                        \\"templateName\\": \\"'$templateName'\\",
+                        \\"env\\": \\"'$env'\\",
+                        \\"status\\": \\"SUCCESS\\"
+                      }" \
+                  "$callbackUrl"
+                '''
             }
         }
 
         failure {
-            echo "❌ AWS provisioning failed for requestId: ${params.requestId}"
+            echo "❌ AWS provisioning failed for requestId: ${requestId}"
 
             withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
-                sh """
+                sh '''
                 curl -s -u "$SN_USER:$SN_PASS" -X POST \
                   -H "Content-Type: application/json" \
-                  -d '{
-                        "requestId": "${params.requestId}",
-                        "templateName": "${params.templateName}",
-                        "env": "${params.env}",
-                        "status": "FAILED"
-                      }' \
-                  "${params.callbackUrl}"
-                """
+                  -d "{
+                        \\"requestId\\": \\"'$requestId'\\",
+                        \\"templateName\\": \\"'$templateName'\\",
+                        \\"env\\": \\"'$env'\\",
+                        \\"status\\": \\"FAILED\\"
+                      }" \
+                  "$callbackUrl"
+                '''
             }
         }
     }
