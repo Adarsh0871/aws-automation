@@ -59,11 +59,11 @@ pipeline {
 
     post {
         success {
-            echo "AWS provisioning successful for requestId: ${params.requestId}"
+            echo "✅ AWS provisioning successful for requestId: ${params.requestId}"
 
             withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
                 sh """
-                curl -s -u ${SN_USER}:${SN_PASS} -X POST \
+                curl -s -u "$SN_USER:$SN_PASS" -X POST \
                   -H "Content-Type: application/json" \
                   -d '{
                         "requestId": "${params.requestId}",
@@ -77,11 +77,11 @@ pipeline {
         }
 
         failure {
-            echo "AWS provisioning failed for requestId: ${params.requestId}"
+            echo "❌ AWS provisioning failed for requestId: ${params.requestId}"
 
             withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
                 sh """
-                curl -s -u ${SN_USER}:${SN_PASS} -X POST \
+                curl -s -u "$SN_USER:$SN_PASS" -X POST \
                   -H "Content-Type: application/json" \
                   -d '{
                         "requestId": "${params.requestId}",
