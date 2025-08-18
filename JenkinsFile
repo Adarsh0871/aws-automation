@@ -5,7 +5,7 @@ pipeline {
         string(name: 'requestId',   defaultValue: 'REQ0001',   description: 'Unique Request ID')
         string(name: 'env',         defaultValue: 'dev',       description: 'Target Environment')
         string(name: 'templateName',defaultValue: 'deploy-ec2',description: 'Ansible Template Name')
-        string(name: 'callbackUrl', defaultValue: '',          description: 'Callback URL (optional)')
+        string(name: 'callbackUrl', defaultValue: '',          description: 'Callback URL (required)')
     }
 
     environment {
@@ -14,6 +14,16 @@ pipeline {
     }
 
     stages {
+        stage('Pre-check Callback URL') {
+            steps {
+                script {
+                    if (!params.callbackUrl?.trim()) {
+                        error "❌ callbackUrl is missing. Stopping pipeline."
+                    }
+                }
+            }
+        }
+
         stage('Checkout Repo') {
             steps {
                 git branch: 'main', url: 'https://github.com/chsagar001/aws-automation.git'
@@ -51,48 +61,36 @@ pipeline {
         success {
             echo "AWS provisioning successful for requestId: ${params.requestId}"
 
-            script {
-                if (params.callbackUrl?.trim()) {
-                    withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
-                        sh """
-                        curl -s -u ${SN_USER}:${SN_PASS} -X POST \
-                          -H "Content-Type: application/json" \
-                          -d '{
-                                "requestId": "${params.requestId}",
-                                "templateName": "${params.templateName}",
-                                "env": "${params.env}",
-                                "status": "SUCCESS"
-                              }' \
-                          "${params.callbackUrl}"
-                        """
-                    }
-                } else {
-                    echo "No callbackUrl provided, skipping callback"
-                }
+            withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
+                sh """
+                curl -s -u ${SN_USER}:${SN_PASS} -X POST \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                        "requestId": "${params.requestId}",
+                        "templateName": "${params.templateName}",
+                        "env": "${params.env}",
+                        "status": "SUCCESS"
+                      }' \
+                  "${params.callbackUrl}"
+                """
             }
         }
 
         failure {
             echo "AWS provisioning failed for requestId: ${params.requestId}"
 
-            script {
-                if (params.callbackUrl?.trim()) {
-                    withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
-                        sh """
-                        curl -s -u ${SN_USER}:${SN_PASS} -X POST \
-                          -H "Content-Type: application/json" \
-                          -d '{
-                                "requestId": "${params.requestId}",
-                                "templateName": "${params.templateName}",
-                                "env": "${params.env}",
-                                "status": "FAILED"
-                              }' \
-                          "${params.callbackUrl}"
-                        """
-                    }
-                } else {
-                    echo "No callbackUrl provided, skipping callback"
-                }
+            withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
+                sh """
+                curl -s -u ${SN_USER}:${SN_PASS} -X POST \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                        "requestId": "${params.requestId}",
+                        "templateName": "${params.templateName}",
+                        "env": "${params.env}",
+                        "status": "FAILED"
+                      }' \
+                  "${params.callbackUrl}"
+                """
             }
         }
     }
