@@ -1,18 +1,18 @@
 pipeline {
     agent any
-
+ 
     environment {
         AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
     }
-
+ 
     stages {
         stage('Checkout Repo') {
             steps {
                 git branch: 'main', url: 'https://github.com/chsagar001/aws-automation.git'
             }
         }
-
+ 
         stage('Verify Ansible & AWS Collection') {
             steps {
                 sh '''
@@ -21,24 +21,31 @@ pipeline {
                 '''
             }
         }
-
+ 
         stage('Run Ansible Playbook') {
             steps {
-                withEnv(["ANSIBLE_COLLECTIONS_PATHS=${env.HOME}/.ansible/collections:/usr/share/ansible/collections",
-                         "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
-                         "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"]) {
-                    sh 'ansible-playbook -i localhost, launch_ec2.yml'
+                withEnv([
+                    "ANSIBLE_COLLECTIONS_PATHS=${env.HOME}/.ansible/collections:/usr/share/ansible/collections",
+                    "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                    "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
+                ]) {
+                    sh """
+                    ansible-playbook -i localhost, ${templateName}.yml \
+                        -e env=${env} \
+                        -e requestId=${requestId} \
+                        -e callbackUrl=${callbackUrl}
+                    """
                 }
             }
         }
     }
-
+ 
     post {
         failure {
-            echo 'AWS provisioning failed.'
+            echo "AWS provisioning failed for requestId: ${requestId}"
         }
         success {
-            echo 'AWS provisioning successful.'
+            echo "AWS provisioning successful for requestId: ${requestId}"
         }
     }
 }
