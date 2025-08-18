@@ -1,18 +1,25 @@
 pipeline {
     agent any
- 
-environment {
+
+    parameters {
+        string(name: 'requestId',   defaultValue: 'REQ0001',   description: 'Unique Request ID')
+        string(name: 'env',         defaultValue: 'dev',       description: 'Target Environment')
+        string(name: 'templateName',defaultValue: 'deploy-ec2',description: 'Ansible Template Name')
+        string(name: 'callbackUrl', defaultValue: '',          description: 'Callback URL (optional)')
+    }
+
+    environment {
         AWS_ACCESS_KEY_ID     = credentials('aws-access-key')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-key')
     }
- 
+
     stages {
         stage('Checkout Repo') {
             steps {
                 git branch: 'main', url: 'https://github.com/chsagar001/aws-automation.git'
             }
         }
- 
+
         stage('Verify Ansible & AWS Collection') {
             steps {
                 sh '''
@@ -21,7 +28,7 @@ environment {
                 '''
             }
         }
- 
+
         stage('Run Ansible Playbook') {
             steps {
                 withEnv([
@@ -30,41 +37,57 @@ environment {
                     "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}"
                 ]) {
                     sh """
-                    ansible-playbook -i localhost, ${templateName}.yml \
-                        -e env=${env} \
-                        -e request_id=${requestId}
+                    ansible-playbook -i localhost, ${params.templateName}.yml \
+                        -e env=${params.env} \
+                        -e request_id=${params.requestId} \
+                        -e callback_url=${params.callbackUrl}
                     """
                 }
             }
         }
     }
- 
+
     post {
         success {
-            echo "AWS provisioning successful for requestId: ${requestId}"
-            sh """
-            curl -X POST -H "Content-Type: application/json" \
-              -d '{
-                    "requestId": "${requestId}",
-                    "templateName": "${templateName}",
-                    "env": "${env}",
-                    "status": "SUCCESS"
-                  }' \
-              ${callbackUrl}
-            """
+            echo "AWS provisioning successful for requestId: ${params.requestId}"
+
+            script {
+                if (params.callbackUrl?.trim()) {
+                    sh """
+                    curl -s -X POST -H "Content-Type: application/json" \
+                      -d '{
+                            "requestId": "${params.requestId}",
+                            "templateName": "${params.templateName}",
+                            "env": "${params.env}",
+                            "status": "SUCCESS"
+                          }' \
+                      "${params.callbackUrl}"
+                    """
+                } else {
+                    echo "No callbackUrl provided, skipping callback"
+                }
+            }
         }
+
         failure {
-            echo "AWS provisioning failed for requestId: ${requestId}"
-            sh """
-            curl -X POST -H "Content-Type: application/json" \
-              -d '{
-                    "requestId": "${requestId}",
-                    "templateName": "${templateName}",
-                    "env": "${env}",
-                    "status": "FAILED"
-                  }' \
-              ${callbackUrl}
-            """
+            echo "AWS provisioning failed for requestId: ${params.requestId}"
+
+            script {
+                if (params.callbackUrl?.trim()) {
+                    sh """
+                    curl -s -X POST -H "Content-Type: application/json" \
+                      -d '{
+                            "requestId": "${params.requestId}",
+                            "templateName": "${params.templateName}",
+                            "env": "${params.env}",
+                            "status": "FAILED"
+                          }' \
+                      "${params.callbackUrl}"
+                    """
+                } else {
+                    echo "No callbackUrl provided, skipping callback"
+                }
+            }
         }
     }
 }
