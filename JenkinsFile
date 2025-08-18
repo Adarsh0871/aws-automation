@@ -53,16 +53,19 @@ pipeline {
 
             script {
                 if (params.callbackUrl?.trim()) {
-                    sh """
-                    curl -s -X POST -H "Content-Type: application/json" \
-                      -d '{
-                            "requestId": "${params.requestId}",
-                            "templateName": "${params.templateName}",
-                            "env": "${params.env}",
-                            "status": "SUCCESS"
-                          }' \
-                      "${params.callbackUrl}"
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
+                        sh """
+                        curl -s -u ${SN_USER}:${SN_PASS} -X POST \
+                          -H "Content-Type: application/json" \
+                          -d '{
+                                "requestId": "${params.requestId}",
+                                "templateName": "${params.templateName}",
+                                "env": "${params.env}",
+                                "status": "SUCCESS"
+                              }' \
+                          "${params.callbackUrl}"
+                        """
+                    }
                 } else {
                     echo "No callbackUrl provided, skipping callback"
                 }
@@ -74,16 +77,19 @@ pipeline {
 
             script {
                 if (params.callbackUrl?.trim()) {
-                    sh """
-                    curl -s -X POST -H "Content-Type: application/json" \
-                      -d '{
-                            "requestId": "${params.requestId}",
-                            "templateName": "${params.templateName}",
-                            "env": "${params.env}",
-                            "status": "FAILED"
-                          }' \
-                      "${params.callbackUrl}"
-                    """
+                    withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
+                        sh """
+                        curl -s -u ${SN_USER}:${SN_PASS} -X POST \
+                          -H "Content-Type: application/json" \
+                          -d '{
+                                "requestId": "${params.requestId}",
+                                "templateName": "${params.templateName}",
+                                "env": "${params.env}",
+                                "status": "FAILED"
+                              }' \
+                          "${params.callbackUrl}"
+                        """
+                    }
                 } else {
                     echo "No callbackUrl provided, skipping callback"
                 }
