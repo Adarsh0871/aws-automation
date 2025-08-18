@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'requestId',   defaultValue: 'REQ0001',   description: 'Unique Request ID')
-        string(name: 'env',         defaultValue: 'dev',       description: 'Target Environment')
-        string(name: 'templateName',defaultValue: 'deploy-ec2',description: 'Ansible Template Name')
+        string(name: 'requestId',   defaultValue: 'REQ0012345',   description: 'Unique Request ID')
+        string(name: 'env',         defaultValue: 'prod,       description: 'Target Environment')
+        string(name: 'templateName',defaultValue: 'launch_ec2',description: 'Ansible Template Name')
         string(name: 'callbackUrl', defaultValue: '',          description: 'Callback URL (required)')
     }
 
