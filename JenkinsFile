@@ -51,38 +51,32 @@ pipeline {
     post {
         success {
             echo "✅ AWS provisioning successful for requestId: ${requestId}"
-
-            withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
-                sh """
-                curl -s -u "$SN_USER:$SN_PASS" -X POST \
+            sh '''
+                curl -s -u "admin:d/sVvPgW5\\$B7" -X POST \
                   -H "Content-Type: application/json" \
-                  -d '{
-                        "request_id": "${requestId}",
-                        "templateName": "${templateName}",
-                        "env": "${env}",
-                        "status": "SUCCESS"
-                      }' \
+                  -d "{
+                        \\"request_id\\": \\"${requestId}\\",
+                        \\"templateName\\": \\"${templateName}\\",
+                        \\"env\\": \\"${env}\\",
+                        \\"status\\": \\"SUCCESS\\"
+                      }" \
                   "${callbackUrl}"
-                """
-            }
+            '''
         }
 
         failure {
             echo "❌ AWS provisioning failed for requestId: ${requestId}"
-
-            withCredentials([usernamePassword(credentialsId: 'snow-creds', usernameVariable: 'SN_USER', passwordVariable: 'SN_PASS')]) {
-                sh """
-                curl -s -u "$SN_USER:$SN_PASS" -X POST \
+            sh '''
+                curl -s -u "admin:d/sVvPgW5\\$B7" -X POST \
                   -H "Content-Type: application/json" \
-                  -d '{
-                        "request_id": "${requestId}",
-                        "templateName": "${templateName}",
-                        "env": "${env}",
-                        "status": "FAILED"
-                      }' \
+                  -d "{
+                        \\"request_id\\": \\"${requestId}\\",
+                        \\"templateName\\": \\"${templateName}\\",
+                        \\"env\\": \\"${env}\\",
+                        \\"status\\": \\"FAILED\\"
+                      }" \
                   "${callbackUrl}"
-                """
-            }
+            '''
         }
     }
 }
