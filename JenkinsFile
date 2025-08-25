@@ -17,7 +17,7 @@ pipeline {
         stage('Pre-check Parameters') {
             steps {
                 script {
-                    if (!requestId?.trim() || !env?.trim() || !templateName?.trim() || !callbackUrl?.trim()) {
+                    if (!requestId || !env || !templateName || !callbackUrl) {
                         error "❌ One or more required parameters are missing. Stopping pipeline."
                     }
                 }
